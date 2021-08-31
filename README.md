@@ -19,7 +19,7 @@ stdout. Multiple URIs can be specified, this is especially useful with
 
 
 ## Usage
-```shell
+```console
 $ ./thunderbird-dmarc.py -h
 usage: thunderbird-dmarc.py [-h] [--verbose] [--debug]
                             [--color {never,always,auto}] [--save]
