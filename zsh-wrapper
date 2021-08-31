@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# zsh does not like "?" in the URIs...
+
+read -r
+# shellcheck disable=SC2086 # Intended splitting of REPLY
+$(dirname "$0")/thunderbird-dmarc.py -v $REPLY
