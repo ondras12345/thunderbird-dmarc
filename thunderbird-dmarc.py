@@ -4,8 +4,10 @@
 import argparse
 import logging
 import mailbox
+from email.header import decode_header
 from io import BytesIO
 import zipfile
+import gzip
 import colorama
 from colorama import Fore, Style  # , Back
 from typing import Tuple
@@ -75,23 +77,40 @@ def message_from_mbox(mbox: mailbox.mbox, number: int) -> mailbox.mboxMessage:
 
 
 def xml_from_message(message: mailbox.mboxMessage) -> Tuple[str, str]:
-    """Extract XML DMARC report from .zip attachment in e-mail message."""
+    """Extract XML DMARC report from compressed attachment in e-mail message.
+
+    Returns a tuple containing (filename, XML_file_content).
+    """
+    VALID_CONTENT_TYPES = {
+        "application/zip",
+        "application/gzip",
+    }
+
     if message.is_multipart():
         _LOGGER.debug("Message is multipart")
         parts = message.get_payload()
         _LOGGER.debug(f"Message parts: {parts}")
-        zip_parts = [part for part in parts
-                     if part.get_content_type() == "application/zip"]
-        if len(zip_parts) != 1:
-            _LOGGER.error(f"Message parts with zip content type: {parts}")
-            if len(zip_parts) == 0:
-                raise ValueError("No zip attachments")
+        valid_parts = [part for part in parts
+                       if part.get_content_type() in VALID_CONTENT_TYPES]
+        if len(valid_parts) != 1:
+            _LOGGER.error(f"Message parts: {parts}")
+            if len(valid_parts) == 0:
+                raise ValueError("No valid attachments")
             else:
-                raise ValueError("Too many zip attachments")
-        message = zip_parts[0]
+                raise ValueError("Too many valid attachments")
+        message = valid_parts[0]
     content_type = message.get_content_type()
-    if content_type != "application/zip":
-        raise ValueError(f"Content-Type is not zip: {content_type}")
+    if content_type not in VALID_CONTENT_TYPES:
+        raise ValueError(f"Content-Type is not valid: {content_type}")
+
+    if content_type == "application/gzip":
+        filename = message.get_filename()
+        _LOGGER.info(f"Gzipped file: {filename}")
+        return (filename,
+                gzip.decompress(message.get_payload(decode=True))
+                    .decode(encoding="utf-8")
+                )
+
     # decode=True decodes base64
     # BytesIO acts as a fake in-memory file
     zip_file = zipfile.ZipFile(BytesIO(message.get_payload(decode=True)))
@@ -178,7 +197,10 @@ if __name__ == "__main__":
         _LOGGER.info(f"Mailbox: {mbox_path}; message number: {message_number}")
         mbox = mailbox.mbox(mbox_path)
         message = message_from_mbox(mbox, message_number)
-        _LOGGER.info(f"Subject: {message['subject']}")
+        subject, _ = decode_header(message["subject"])[0]
+        if isinstance(subject, bytes):
+            subject = subject.decode("utf-8")
+        _LOGGER.info(f"Subject: {subject}")
         _LOGGER.debug(f"Keys: {message.keys()}")
         xml_filename, xml_file = xml_from_message(message)
         if args.save:
