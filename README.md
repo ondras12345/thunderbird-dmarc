@@ -52,7 +52,7 @@ mark in the URI. Or use the simple [`zsh-wrapper`](./zsh-wrapper).
 ## Installation
 ```
 # clone this git repository and cd into it
-pip3 install -r requirements.txt
+pip3 install .
 ```
 
 
