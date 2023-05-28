@@ -17,6 +17,11 @@ message, unzips the `.zip` attachment, and writes the XML file's contents to
 stdout. Multiple URIs can be specified, this is especially useful with
 `--save`.
 
+Note: A recent Thunderbird update seems to have changed the behavior when
+drag-and-dropping multiple messages. It now produces a different URI that
+cannot be used with this script and as a result, e-mails have to be
+drag-and-dropped one by one.
+
 
 ## Usage
 ```console
